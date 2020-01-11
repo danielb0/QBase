@@ -1,0 +1,720 @@
+100 REMark QL dbas front end package program
+110 REMark $$asmb=win1_qbsrc_QBase_cnf_cde,0,12
+120 REMark $$asmb=win1_qbsrc_qbase_new_cde,4,82
+130 REMark $$stak=16384
+140 REMark WHEN ERRor
+150 REMark ERROR_HANDLING
+160 REMark END WHEN
+170 REMark IF SCR_XLIM=512 THEN a=ITEM_SELECT('Sorry',"This program doesn't work at this resolution",'OK',,,0,0):STOP
+180 IF VER$="HBA" THEN
+190 JOB_NAME "Database Editor"
+200 END IF
+210 IF VER$<>"HBA" THEN
+220   cmd$=""
+230 END IF
+240 DIM choice$(3,26)
+250 DIM choice2$(15,15)
+260 page_no%=0
+270 REMark read page size and scroll size from config block
+280 scroll_size%=C_WORD(2)
+290 page_size%=C_WORD(1)
+300 REMark scroll_size% = 2000
+310 REMark PRINT #0,scroll_size%,page_size%
+320 IF scroll_size% > page_size% THEN
+330   scroll_size%=page_size%
+340 END IF
+350 REMark PRINT #0,scroll_size%,page_size%
+360 top_row% = 0
+370 :
+380 REMark set up main menu
+390 :
+400 dbname$="":status$=""
+410 search_string$=""
+420 changed%=1
+430 tabb=0
+440 :
+450 REMark setup secondary menu
+460 :
+470 :
+480 REMark open console window and size it to max size of screen
+490 :
+500 outline_x = 512: outline_y = 256
+510 OPEN#6,'con_' : REMark menu window channel
+520 scr_x=450:scr_y=210 : REMark temporarily sey screen size variables manually.
+530 OUTL#6,outline_x,outline_y,0,0
+540 OPEN #3,'con_' : REMark display application window
+550 OPEN #7,'con_' : REMark status bar
+560 OPEN #8,'con_'
+570 REMark OUTLN
+580 :
+590 REMark Draw the menu screen, make all loose items except the file menu button unavailable
+600 :
+610 MDRAW#6,'qbase8',0,0
+620 screen_size=1
+630 scr_x=450:scr_y=210 : REMark temporarily set application window size variables manually.
+640 FOR button=-2 TO -13 STEP -1: a=MSTAT%(#6,button,-1): NEXT button
+650 a=MSTAT%(#6,-17,-1)
+660 a=MSTAT%(#6,-18,-1)
+670 REMark MAKE_SCREEN
+680 MWLINK#6,1!#7: PRINT #7,cmd$
+690 IF cmd$<>"" THEN
+700   er = FDB_OPEN_DATA(#4;cmd$)
+710   IF er<>0 THEN
+720      MWLINK #6,1!#7:INK#7,0:PAPER#7,221:CLS#7: REPORT#7,er
+730   ELSE
+740      init_screen:dbname$=cmd$
+750      er=FDB_RPOSAB(#4,0):a=MSTAT%(#6,-1,0)
+760      MAKE_SCREEN:PRINT_ALL_FIELDS
+770   END IF
+780 END IF
+790 REPeat main_loop
+800   action=MCALL(#6;\0)
+810   REMark PRINT #0,action, MAWNUM(#6,action,coll%,roww%):PRINT#0, coll%,roww%:PRINT#0, scr_contents$(coll%,roww%)
+820   IF action > 65536 THEN EDIT_RECORD
+830   SELect ON action
+840     =-0: er=FDB_CLOSE_DATA(#4):CLS#3:CLOSE #3:MCLEAR #6:CLOSE #6:CLOSE #7:CLAMP:EXIT main_loop
+850     =-1: FILE_MENU:er=FDB_RPOSAB(#4,0):MDRAW#6: a=MSTAT%(#6,-1,0):IF NOT er THEN MAKE_SCREEN: PRINT_ALL_FIELDS:REMark open database
+860     =-3: RPOSRE#4;1:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-3,0):                REMark next record
+870     =-4: RPOSRE#4;-1:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-4,0):               REMark previous record
+880     =-5: RPOSAB#4,0:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-5,0):                REMark go to first record
+890     =-6: RPOSAB#4,COUNT(#4):UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-6,0):        REMark go to last record
+900     =-7: ADD_REC:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-7,0):                   REMark add record
+910     =-8: DELETE_RECORD:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-8,0):             REMark delete record
+920       REMark =-9: add=0:EDIT_REC:UPDATE_STATUS:PRINT_ALL_FIELDS: a=MSTAT%(#6,-9,0):              REMark update record
+930     =-12:curr_rec=RECNUM(#4):FIND_STRING:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-12,0): REMark find record
+940     =-13: curr_rec=RECNUM(#4):FIND_AGAIN:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-13,0): REMark find again
+950     =-17: ORDER_DATA_BASE:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS: a=MSTAT%(#6,-17,0):                REMark SORT
+960     =-18: INCLUDE_FIELDS:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-18,0):              REMark INCLUDE
+970     =-2: tabb=1:temprecnum=RECNUM(#4):tabular:RPOSAB#4,temprecnum:tabb=0:UPDATE_STATUS:MAKE_SCREEN:PRINT_ALL_FIELDS
+980     =-9: NEW_FIELD:UPDATE_STATUS:RECALCULATE_POSITIONS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-9,0):     REMark add field
+990     =-10: DELETE_FIELD:UPDATE_STATUS:RECALCULATE_POSITIONS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-10,0):REMark delete field
+1000     =-11: RENAME_FIELD:UPDATE_STATUS:RECALCULATE_POSITIONS:MAKE_SCREEN:PRINT_ALL_FIELDS: a=MSTAT%(#6,-11,0):REMark rename field
+1010     =-19: RESIZE_WINDOW 6, 3, xsize%, ysize%: scr_x = xsize%: scy=ysize%: IF dbname$<>"" THEN :UPDATE_STATUS: MAKE_SCREEN: PRINT_ALL_FIELDS: END IF : a=MSTAT%(#6,-19,0)
+1020     REMark =-20:SMALLER:a=MSTAT%(#6,-20,0)
+1030       REMark    =15: CLOSE_DATA#4:CLS#3:EXIT secondary_loop
+1040     =REMAINDER :
+1050   END SELect
+1060 END REPeat main_loop
+1070 STOP
+1080 :
+1090 DEFine PROCedure FILE_MENU
+1100   MDRAW#8,'file'
+1110   REPeat act_loop
+1120     action=MCALL(#8;\0)
+1130     SELect ON action
+1140       =-1: OPEN_DB:EXIT act_loop
+1150       =-2: CREATE_DB:a=MSTAT%(#8,-2,0)
+1160       =-3: ABOUT_MENU:a=MSTAT%(#8,-3,0)
+1170       =-5: EXPORT_FILE:a=MSTAT%(#8,-5,0): EXIT act_loop
+1180       =-6: IMPORT_FILE: a=MSTAT%(#8,-6,0):EXIT act_loop
+1190       =0: MCLEAR#8:RETurn
+1200     END SELect
+1210   END REPeat act_loop
+1220 MCLEAR #8
+1230 END DEFine FILE_MENU
+1240 :
+1250 DEFine PROCedure IMPORT_FILE
+1260  REMark REPeat until_correct
+1270    ifile$=FILE_SELECT$("Import file name","",-1,_exp)
+1280    dbname$=FILE_SELECT$("New Database","",-1,_dbs)
+1290    er=FDB_IMPORT(ifile$ TO #10;dbname$)
+1300   IF er <> 0 THEN
+1310     REPORT_ERROR(er)
+1320   ELSE
+1330    REMark IF er=0 THEN EXIT until_correct
+1340    REMark a=FILE_ERROR (er)
+1350    REMark IF a=0 THEN m=MSTAT%(#8,-6,0):RETurn
+1360    REMark END REPeat until_correct
+1370     CLOSE_DATA #10
+1380   END IF
+1390 END DEFine IMPORT_FILE
+1400 :
+1410 DEFine PROCedure EXPORT_FILE
+1420    efile$=FILE_SELECT$("Export file name","",-1,_exp)
+1430    REPeat until_correct
+1440    er=FDB_EXPORT(#4 TO efile$)
+1450    IF er=0 THEN EXIT until_correct
+1460    a=FILE_ERROR(er)
+1470    IF a=0 THEN m=MSTAT%(#8,-5,0): RETurn
+1480  END REPeat until_correct
+1490 END DEFine EXPORT_FILE
+1500 :
+1510 DEFine PROCedure ABOUT_MENU
+1520   OPEN#9,'con_'
+1530     MDRAW#9,'about'
+1540     REPeat about_loop
+1550       action=MCALL(#9,\0)
+1560       IF action=0 THEN MCLEAR#9:RETurn
+1570     END REPeat about_loop
+1580 END DEFine ABOUT_MENU
+1590 :
+1600 DEFine PROCedure OPEN_DB
+1610   REMark LOCal dbname$,no_fields,f_type(10),f_len(10),f_name$(10,10)
+1620   dbname$=""
+1630   REPeat until_correct
+1640   dbname$=FILE_SELECT$("Open Database","",-1,_dbs)
+1650   REMark test for file errors
+1660   IF dbname$="" THEN RETurn
+1670   er=FDB_OPEN_DATA(#4;dbname$)
+1680   IF er=0 THEN EXIT until_correct
+1690   IF er=-7 THEN
+1700      a=FILE_ERROR(-7)
+1710      IF a=0 THEN
+1720         CLOSE#4:MCLEAR#6:CLOSE#6:CLOSE #7:CLAMP:STOP
+1730      END IF
+1740   END IF
+1750   REPORT_ERROR(er)
+1760   dbname$=""
+1770   END REPeat until_correct
+1780 init_screen
+1790 END DEFine  OPEN_DB
+1800 :
+1810 DEFine PROCedure init_screen
+1820   REMark get field names, types, lengths  etc and put them in an array
+1830   :
+1840   UPDATE_STATUS
+1850   no_fields=FLNUM(#4)
+1860   DIM f_type(no_fields-1):DIM f_len(no_fields-1):DIM f_name$(no_fields-1,20)
+1870   DIM flxpos(no_fields-1),flypos(no_fields-1)
+1880   FOR i=0 TO no_fields-1
+1890     f_name$(i)=FLNAME(#4;i+1):f_type(i)=FLTYP(#4;i+1):f_len(i)=FLLEN(#4;i+1)
+1900   END FOR i
+1910   :
+1920   REMark calculate screen positions; simple as of now
+1930   :
+1940   p=2
+1950   FOR i=0 TO no_fields-1
+1960     flxpos(i)=p
+1970     flypos(i)=2
+1980   IF FLNUM(#4)>INT(scr_y/10/2-2) THEN p=p+1: incr=1:ELSE p=p+2 :incr=2:END IF
+1990   no_lines=f_len(i)/((scr_x/6)-2)
+2000   IF incr<INT(no_lines) THEN p=p+INT(no_lines-l)
+2010 END FOR i
+2020 FOR i=-1 TO -13 STEP -1: a=MSTAT%(#6, i, 0): NEXT i
+2030 a=MSTAT%(#6, -17, 0)
+2040 a=MSTAT%(#6, -18, 0)
+2050 END DEFine init_screen
+2060 :
+2070 REMark MAKE_SCREEN
+2080 REMark PRINT_ALL_FIELDS
+2090 :
+2100 DEFine PROCedure RECALCULATE_POSITIONS
+2110   no_fields=FLNUM(#4)
+2120   DIM f_type(no_fields-1):DIM f_len(no_fields-1):DIM f_name$(no_fields-1,20)
+2130   DIM flxpos(no_fields-1),flypos(no_fields-1)
+2140   FOR i=0 TO no_fields-1
+2150     f_name$(i)=FLNAME(#4;i+1):f_type(i)=FLTYP(#4;i+1):f_len(i)=FLLEN(#4;i+1)
+2160   END FOR i
+2170   :
+2180   REMark calculate screen positions; simple as of now
+2190   :
+2200   p=2
+2210   FOR i=0 TO no_fields-1
+2220     flxpos(i)=p
+2230     flypos(i)=2
+2240   IF FLNUM(#4)>INT(scr_y/10/2-2) THEN p=p+1: incr=1:ELSE p=p+2 :incr=2:END IF
+2250   no_lines=f_len(i)/((scr_x/6)-2)
+2260   IF incr<INT(no_lines) THEN p=p+INT(no_lines-l)
+2270 END FOR i
+2280 END DEFine RECALCULATE_POSITIONS
+2290 :
+2300 DEFine PROCedure MAKE_SCREEN
+2310   LOCal xpos,ypos
+2320   DIM scr_contents$(1,no_fields-1,50)
+2330   DIM x_width%(1)
+2340   :
+2350   REMark make sure screen title is always centered
+2360   :
+2370   tit$=" Q-Base v1.00 : "&dbname$&status$
+2380   MWLINK#6,1!#7
+2390   INK#7,0:PAPER#7,221
+2400   PRINT #7,tit$
+2410   MWLINK #6,1,#3
+2420   CLS#3
+2430   INK #3,7
+2440   x_width%(0)=scr_x/4
+2450   x_width%(1)=x_width%(0)*3-15
+2460   FOR i=0 TO no_fields-1
+2470     scr_contents$(0,i)=f_name$(i)
+2480     scr_contents$(1,i)=FETCH(#4,i+1)
+2490   END FOR i
+2500 END DEFine MAKE_SCREEN
+2510 :
+2520 DEFine PROCedure PRINT_ALL_FIELDS
+2530   LOCal i
+2540   MAWDRAW #6,1,scr_contents$,0,0,,x_width%
+2550   FOR i=1 TO FLNUM(#4)*2 STEP 2
+2560     stat%=MSTAT%(#6,i*65536+1,-1)
+2570     REMark PRINT #0,i;
+2580   END FOR i
+2590 END DEFine PRINT_ALL_FIELDS
+2600 :
+2610 DEFine PROCedure PRINT_FIELD(x,y,field_name$)
+2620   AT#3,x,y
+2630   PRINT #3,field_name$
+2640 END DEFine PRINT_FIELD
+2650 :
+2660 DEFine PROCedure EDIT_RECORD
+2670   LOCal num,f,f%,col%,row%,edittext$,text$,i,f$,result%(15)
+2680   PVAL#6,result%
+2690   MWINDOW#6,action
+2700   text$=MTEXT$(#6,action)
+2710      IF result%(5)=1 THEN HOT_STUFF text$: a=MSTAT%(#6,action,0):RETurn : REMark stuff stuffer buffer on left mouse click
+2720   MINPUT#6,text$
+2730   key%=MKEY%(#6)
+2740   num=MAWNUM(#6,action,col%,row%)
+2750   IF key%=10 THEN
+2760     i=row%+1
+2770     f$=text$
+2780     typ=f_type(row%)
+2790     SELect ON typ
+2800       =0:er=FDB_SET(#4;i;f$):
+2810       =1:IF NUMBER(f$) AND BOUNDS(f$) THEN f%=f$:er=FDB_SET(#4;i;f%)
+2820       =2:IF NUMBER(f$) THEN f=f$:er=FDB_SET(#4;i;f)
+2830       =3:IF NUMBER(f$) THEN f=f$:er=FDB_SET(#4;i;f)
+2840     END SELect
+2850     IF NOT NUMBER(f$) AND typ<>0 THEN REPORT_ERROR -17: MAKE_SCREEN: PRINT_ALL_FIELDS: RETurn
+2860     IF NOT BOUNDS(f$) AND typ=1 THEN REPORT_ERROR -18: MAKE_SCREEN: PRINT_ALL_FIELDS: RETurn
+2870     IF er=-5 THEN REPORT_ERROR -5:MAKE_SCREEN:PRINT_ALL_FIELDS: RETurn
+2880     IF er=-17 THEN REPORT_ERROR -17:MAKE_SCREEN:PRINT_ALL_FIELDS: RETurn
+2890     er = FDB_UPDATE(#4)
+2895     IF er<>0 THEN
+2897        REPORT_ERROR(er)
+2898     END IF
+2900     MAKE_SCREEN:PRINT_ALL_FIELDS
+2910   END IF
+2920 END DEFine EDIT_RECORD
+2930 :
+2940 DEFine PROCedure ADD_REC
+2950   LOCal f$,typ,i,c
+2960   c=COUNT(#4)+1:status$=" : Record "&c&" of "&c:MAKE_SCREEN
+2970   FOR i=0 TO no_fields-1
+2980     typ=f_type(i)
+2990     SELect ON typ
+3000       =0:SET#4;i+1;""
+3010       =1:SET#4;i+1;0
+3020       =2:SET#4;i+1;0
+3030       =3:SET#4;i+1;0
+3040     END SELect
+3050   END FOR i
+3060   er = FDB_APPEND(#4)
+3065   IF er<>0 THEN
+3067      REPORT_ERROR(er)
+3068      RETurn
+3069   END IF
+3070   RPOSAB#4,COUNT(#4)
+3080 END DEFine ADD_REC
+3090 :
+3100 DEFine PROCedure WHOLE_SCREEN
+3110   MAKE_SCREEN
+3120   PRINT_ALL_FIELDS
+3130 END DEFine WHOLE_SCREEN
+3140 :
+3150 DEFine PROCedure NEW_FIELD
+3160   LOCal field_choice,type,name$,length,length$
+3170   name$=""
+3180   length$=""
+3190   length=-20: REMark default length
+3200   type = 0: REMark default type
+3210   field_choice=FLNUM(#4)+1: REMark default to append
+3220   MDRAW#8,'addfield'
+3230   MAWDRAW#8,1,f_name$,0,0,,105
+3240   REPeat action_loop
+3250     action=MCALL(#8; \0)
+3260     IF action > 65536 THEN
+3270       a=MSTAT%(#8,-9,0)
+3280       tempaction=action
+3290       FOR i=1 TO FLNUM(#4)
+3300         a=MSTAT%(#8,i*65536+1,0)
+3310       END FOR i
+3320       a=MSTAT%(#8,tempaction,1)
+3330       field_choice=MAWNUM(#8,action)
+3340     END IF
+3350     SELect ON action
+3360       =0: MCLEAR#8:RETurn
+3370       =-1:a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-3,0):a=MSTAT%(#8,-4,0):type=0
+3380       =-2:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-3,0):a=MSTAT%(#8,-4,0):type=1
+3390       =-3:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-4,0):type=2
+3400       =-4:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-3,0):type=3
+3410       =-10:MWINDOW#8,-10:PAPER #8,7:MINPUT#8,length$:length=length$
+3420       =-8:MWINDOW#8,-8:PAPER #8,7:MINPUT#8,name$
+3430       =-5: MCLEAR #8: EXIT action_loop
+3440     =-9: field_choice=FLNUM(#4)+1:FOR i=1 TO FLNUM(#4):a=MSTAT%(#8,i*65536+1,0):END FOR i
+3450   END SELect
+3460 END REPeat action_loop
+3470 IF name$="" THEN RETurn
+3480 IF type = 0 AND name$(LEN(name$))<>"$" THEN
+3490   name$=name$&"$"
+3500 END IF
+3510 message$ = "Add a field called "&name$&" of type "&type&"?"
+3520 final_choice=ITEM_SELECT("Confirm",message$,"Yes","No")
+3530 IF final_choice<>1 THEN RETurn
+3540 IF final_choice=1 AND type=0 THEN
+3550   er = FDB_ADD_FIELD(#4;field_choice,type,length)
+3560   REMark PRINT#0, er
+3570   IF er<>0 THEN
+3580      REPORT_ERROR(er)
+3590      RETurn
+3600   END IF
+3610 END IF
+3620 IF final_choice=1 AND type <> 0 THEN
+3630   er = FDB_ADD_FIELD(#4;field_choice,type,0)
+3640   REMark PRINT #0, er
+3650   IF er<>0 THEN
+3660     REPORT_ERROR(er)
+3670     RETurn
+3680   END IF
+3690 END IF
+3700 er = FDB_STNAME(#4;field_choice,name$)
+3710 IF er <> 0 THEN
+3720    REPORT_ERROR(er)
+3730    RETurn
+3740 END IF
+3750 er = FDB_SAVE_NAMES(#4)
+3755 IF  er <> 0 THEN
+3757    REPORT_ERROR(er)
+3758    RETurn
+3759 END IF
+3760 END DEFine NEW_FIELD
+3770 :
+3780 DEFine PROCedure DELETE_FIELD
+3790   LOCal field_choice,a,tempaction,final_choice
+3800   IF FLNUM(#4)=1 THEN a=ITEM_SELECT ("Warning","You can't delete the last field in a file","OK"):RETurn
+3810   MDRAW#8,'delfield'
+3820   MAWDRAW#8,1,f_name$,0,0,,105
+3830   REPeat action_loop
+3840     action=MCALL(#8; \0)
+3850     IF action > 65536 THEN
+3860       tempaction=action
+3870       FOR i=1 TO FLNUM(#4)
+3880         a=MSTAT%(#8,i*65536+1,0)
+3890       END FOR i
+3900       a=MSTAT%(#8,tempaction,1)
+3910       field_choice=MAWNUM(#8,action)
+3920     END IF
+3930     IF field_choice=0 THEN MCLEAR#8:RETurn
+3940     SELect ON action
+3950       =0: MCLEAR#8:RETurn
+3960       =-1: MCLEAR #8: EXIT action_loop
+3970     END SELect
+3980   END REPeat action_loop
+3990   final_choice=ITEM_SELECT("Confirm","Are you sure you want to delete the field "&f_name$(field_choice-1),"Yes","No")
+4000   IF final_choice<>1 THEN RETurn
+4010   er = FDB_REMOVE_FIELD (#4,field_choice)
+4015   IF er<>0 THEN
+4017     REPORT_ERROR(er)
+4018     RETurn
+4019   END IF
+4020 END DEFine DELETE_FIELD
+4030 :
+4040 DEFine PROCedure RENAME_FIELD
+4050   LOCal field_choice, new_name$
+4060   new_name$=""
+4070   MDRAW#8,'renfield'
+4080   MAWDRAW#8,1,f_name$,0,0,,105
+4090   REPeat action_loop
+4100     action=MCALL(#8; \0)
+4110     IF action > 65536 THEN
+4120       tempaction=action
+4130       FOR i=1 TO FLNUM(#4)
+4140         a=MSTAT%(#8,i*65536+1,0)
+4150       END FOR i
+4160       a=MSTAT%(#8,tempaction,1)
+4170       field_choice=MAWNUM(#8,action)
+4180     END IF
+4190     SELect ON action
+4200       =0:  MCLEAR#8:RETurn
+4210       =-1: MCLEAR #8: EXIT action_loop
+4220       =-4: MWINDOW#8,-4:PAPER#8,7:MINPUT#8,new_name$
+4230     END SELect
+4240   END REPeat action_loop
+4250   IF FLTYP(#4,field_choice)=0 AND new_name$(LEN(new_name$))<>"$" THEN
+4260     new_name$=new_name$&"$"
+4270   END IF
+4280   IF new_name$="" THEN RETurn
+4290   final_choice=ITEM_SELECT("Confirm","Are you sure you want to rename the field "&f_name$(field_choice-1)&" to "&new_name$,"Yes","No")
+4300   IF final_choice<>1 THEN RETurn
+4310   er = FDB_STNAME(#4;field_choice,new_name$)
+4315   IF er <> 0 THEN
+4317     REPORT_ERROR(er)
+4318     RETurn
+4319   END IF
+4320   er = FDB_SAVE_NAMES(#4)
+4325   IF er<>0 THEN
+4327     REPORT_ERROR(er)
+4328     RETurn
+4329   END IF
+4330 END DEFine RENAME_FIELD
+4340 :
+4350 DEFine PROCedure CREATE_DB
+4360     er=FDB_CLOSE_DATA(#4)
+4370     dbname$=FILE_SELECT$("New Database",DATAD$&"new_data_base_dbs",-1,_dbs)
+4380     REPeat until_correct
+4390       er=FDB_CREATE(#4;dbname$; 0,-20; 0,-20)
+4400       IF er=0 THEN EXIT until_correct
+4410       IF er=-8 THEN REPORT_ERROR -8: RETurn
+4420       IF er=-7 THEN REPORT_ERROR -7: RETurn
+4430     END REPeat until_correct
+4440     SEXTRA #4;'"field1$","field2$"'&CHR$(13)&CHR$(10)
+4450     APPEND#4
+4460     CLOSE_DATA#4
+4470 END DEFine CREATE_DB
+4480 :
+4490 DEFine PROCedure CHANGE_DATA_DIR
+4500   ddir$=DIR_SELECT$("Select new data directory",,,,,,"win3_dbas_")
+4510   DATA_USE ddir$
+4520 END DEFine CHANGE_DATA_DIR
+4530 :
+4540 DEFine PROCedure UPDATE_STATUS
+4550   r=RECNUM(#4)+1
+4560   c=COUNT(#4)
+4570   status$=" : Record "&r&" of "&c&"                "
+4580 END DEFine UPDATE_STATUS
+4590 :
+4600 DEFine FuNction PIX_CENT(wid,STRNG$)
+4610   LOCal w$
+4620   w$=wid/2-((LEN(STRNG$)*6)/2)
+4630   RETurn w$
+4640 END DEFine PIX_CENT
+4650 :
+4660 DEFine PROCedure FIND_STRING
+4670   search_string$=READ_STRING$("Input a string",,"String to find:")
+4680   FIND#4;search_string$
+4690   IF FOUND(#4)=0
+4700     a=ITEM_SELECT("Error",search_string$&" not found",CHR$(27))
+4710     RPOSAB#4;curr_rec
+4720   END IF
+4730 END DEFine FIND_STRING
+4740 :
+4750 DEFine PROCedure FIND_AGAIN
+4760   IF search_string$="" THEN RETurn
+4770   FINDC#4;search_string$
+4780   IF FOUND(#4)=0
+4790     a=ITEM_SELECT("Error",search_string$&" not found",CHR$(27))
+4800     RPOSAB#4;curr_rec
+4810   END IF
+4820 END DEFine FIND_AGAIN
+4830 :
+4840 DEFine PROCedure ORDER_DATA_BASE
+4850   LOCal action,title$,lin,column,direction,direc$,field
+4860   REMark set defaults
+4870   direction=1:field_choice=1
+4880   MDRAW#8,'sort'
+4890   MAWDRAW#8,1,f_name$,0,0,,105
+4900   REPeat action_loop
+4910     action=MCALL(#8;\0)
+4920     IF action > 65536 THEN
+4930       tempaction=action
+4940       FOR i=1 TO FLNUM(#4)
+4950         a=MSTAT%(#8,i*65536+1,0)
+4960       END FOR i
+4970       a=MSTAT%(#8,tempaction,1)
+4980       field_choice=MAWNUM(#8,action)
+4990     END IF
+5000     SELect ON action
+5010       =0: MCLEAR#8: RETurn
+5020       =-1:a=MSTAT%(#8,-5,0):direction=1
+5030       =-5:a=MSTAT%(#8,-1,0):direction=-1
+5040       =-2:MCLEAR#8:EXIT action_loop
+5050     END SELect
+5060   END REPeat action_loop
+5070   ORDER#4;field_choice,direction
+5080 END DEFine ORDER_DATA_BASE
+5090 :
+5100 DEFine PROCedure INCLUDE_FIELDS
+5110   LOCal criterion$
+5120   REMark set defaults
+5130   criterion$="":exclud=1:operator$="=":field_choice=1
+5140   MDRAW#8,'select'
+5150   MAWDRAW#8,1,f_name$,0,0,,105
+5160   REPeat action_loop
+5170     action=MCALL(#8; \0)
+5180     IF action > 65536 THEN
+5190       tempaction=action
+5200       FOR i=1 TO FLNUM(#4)
+5210         a=MSTAT%(#8,i*65536+1,0)
+5220       END FOR i
+5230       a=MSTAT%(#8,tempaction,1)
+5240       field_choice=MAWNUM(#8,action)
+5250     END IF
+5260     SELect ON action
+5270       =0: MCLEAR#8: RETurn
+5280       =-9:a=MSTAT%(#8,-8,0):exclud=1
+5290       =-8:a=MSTAT%(#8,-9,0):exclud=0
+5300       =-1:a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-3,0):a=MSTAT%(#8,-4,0):operator$="="
+5310       =-2:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-3,0):a=MSTAT%(#8,-4,0):operator$="<>"
+5320       =-3:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-4,0):operator$="<"
+5330       =-4:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-3,0):operator$=">"
+5340       =-10:MWINDOW#8,-10:PAPER#8,7:MINPUT#8,criterion$
+5350       =-5: MCLEAR #8: EXIT action_loop
+5360       =-11: MCLEAR #8: INCLUDE #4: RETurn
+5370     END SELect
+5380   END REPeat action_loop
+5390   IF includ=1 THEN INCLUDE#4;field_choice,operator$,criterion$
+5400   IF includ=0 THEN EXCLUDE#4;field_choice,operator$,criterion$
+5410   IF COUNT(#4)=0 THEN a=ITEM_SELECT("ERROR","All fields have been excluded","Include all"):INCLUDE #4
+5420 END DEFine INCLUDE_FIELDS
+5430 :
+5440 DEFine PROCedure DELETE_RECORD
+5450   LOCal choice
+5460   IF COUNT(#4)=1 THEN a=ITEM_SELECT("Warning","You can't delete the last record in a file","OK"):RETurn
+5470   choice=ITEM_SELECT('Delete?',"Are you sure you want to delete this record?",yes,no)
+5480   IF choice=1 THEN
+5490     er = FDB_REMOVE(#4)
+5495     IF er <>0 THEN
+5497       REPORT_ERROR(er)
+5498       RETurn
+5499     END IF
+5500   END IF
+5510 END DEFine DELETE_RECORD
+5520 :
+5530 :
+5540 :
+5550 DEFine PROCedure tabular: REMark new version of tabular edit with PE
+5560 LOCal f,r,No_of_fields,no_of_records
+5570 temp%=temprecnum
+5580 top_row%=temprecnum
+5590 UPDATE_TABLE 0,top_row%
+5600 REPeat loop_action
+5610   act=MCALL(#6; \0)
+5620   IF act>65536 THEN EDIT_TAB
+5630   SELect ON act
+5640     =0: CLOSE #6:CLOSE #7: er=FDB_CLOSE_DATA(#4):CLAMP:STOP
+5650     =-2: MAWCLEAR#6,1: FOR i=-1 TO -13 STEP -1: a=MSTAT%(#6,i,0):NEXT i:RETurn
+5660     =-3: a = MSTAT%(#6,-3,0): newy% = top_row%+scroll_size%: IF newy%<COUNT(#4) THEN :top_row%=newy%: UPDATE_TABLE 0,newy% : END IF : REMark Pgdown
+5670     =-4: a=MSTAT%(#6,-4,0): IF top_row%<scroll_size% THEN : newy%=0: ELSE : newy%=top_row%-scroll_size%:END IF :IF newy%>=0 THEN :top_row%=newy%: UPDATE_TABLE 0,newy% : END IF :REMark page up
+5680     =-17: ORDER_DATA_BASE:a=MSTAT%(#6,-17,0): changed%=1: UPDATE_TABLE 0,0
+5690     =-18: INCLUDE_FIELDS:a=MSTAT%(#6,-18,0):changed%=1:UPDATE_TABLE 0,0
+5700     =-19: RESIZE_WINDOW 6, 3, xsize%, ysize%:scr_x = xsize%:scr_y=ysize%:a=MSTAT%(#6,-19,0): UPDATE_TABLE 0,top_row%
+5710   END SELect
+5720 MWLINK #6,1!#7:CLS#7
+5730 END REPeat loop_action
+5740 END DEFine
+5750 :
+5760 DEFine PROCedure EDIT_TAB
+5770    LOCal x%,y%,xpos%,ypos%,field$,result%(15)
+5780    a=MAWNUM(#6,act,x%,y%): REMark PRINT #0,x%,y%: REMark selected coordinates are in x% and y%
+5790    a=MAWNUM(#6\1,xpos%,ypos%): REMark top left coordinates
+5800    REMark PRINT#0, x%,y%
+5810    IF y%=0 THEN a=MSTAT%(#6,act,0):RETurn : REMark don't edit field names!
+5820    RPOSAB#4,y%-1+top_row%: field$=FETCH(#4;x%+1): REMark PRINT#0,field$
+5830    PVAL #6, result%
+5840    IF result%(5)=1 THEN HOT_STUFF field$: temprecnum=y%-1:a=MSTAT%(#6,act,0): RETurn
+5850    MWINDOW #6,1!
+5860    INK #6,0
+5870    PAPER#6,7
+5880    MINPUT#6,field$
+5890     f$=field$
+5900     typ=f_type(x%)
+5910     SELect ON typ
+5920       =0:er=FDB_SET(#4;x%+1;f$):
+5930       =1:IF NUMBER(f$) AND BOUNDS (f$) THEN f%=f$:er=FDB_SET(#4;x%+1;f%)
+5940       =2:IF NUMBER(f$) THEN f=f$:er=FDB_SET(#4;x%+1;f)
+5950       =3:IF NUMBER(f$) THEN f=f$:er=FDB_SET(#4;x%+1;f)
+5960     END SELect
+5970     IF NOT NUMBER(f$) AND typ<>0 THEN REPORT_ERROR -17: changed%=0: UPDATE_TABLE xpos%,ypos%: RETurn
+5980     IF type=1 AND NOT BOUNDS(f$) THEN REPORT_ERROR -18: changed%=0:UPDATE_TABLE xpos%,ypos%: RETurn
+5990     IF er=-5 THEN REPORT_ERROR -5:changed%=0: UPDATE_TABLE xpos%,ypos%: RETurn
+6000     IF er=-17 THEN REPORT_ERROR -17:changed%=0: UPDATE_TABLE xpos%,ypos%:PRINT_ALL_FIELDS: RETurn
+6010     temprecnum=y%-1
+6020     UPDATE#4
+6030     changed%=1:UPDATE_TABLE xpos%,ypos%+top_row%
+6040 END DEFine EDIT_TAB
+6050 :
+6060 DEFine PROCedure UPDATE_TABLE(x%,y%)
+6070   LOCal result%(15),maxlen%,array_records%
+6080   REMark PRINT#0, y%
+6090   MWLINK #6,1!#7:CLS#7
+6100   maxlen%=20
+6110   No_of_fields%=FLNUM(#4):no_of_records%=COUNT(#4)
+6120   IF no_of_records%-y% < page_size% THEN
+6130      array_records%=no_of_records%-y%
+6140   ELSE
+6150      array_records%=page_size%
+6160   END IF
+6170   REMark PRINT #0,array_records%
+6180   IF changed%=1 THEN DIM array$(No_of_fields%-1,array_records%,maxlen%)
+6190   MWLINK#6,1,#3:REMark MDRAW#6
+6200   REMark disable buttons
+6210   a=MSTAT%(#6,-1,-1):a=MSTAT%(#6,-2,1):FOR i=-5 TO -13 STEP -1: a=MSTAT%(#6,i,-1):END FOR i
+6220   IF changed%=1 THEN
+6230   RPOSAB#4,0
+6240   FOR i=1 TO No_of_fields%
+6250     array$(i-1,0)=FLNAME(#4,i)
+6260   END FOR i
+6270   record_counter%=1
+6280   FOR r=y% TO y% + page_size%-1
+6290     IF r < COUNT(#4) AND r>=0 THEN
+6300       RPOSAB#4,r
+6310       FOR f=1 TO No_of_fields%
+6320         v$=FETCH(#4,f)
+6330         REMark PRINT #0,page_no%,page_size%,record_counter%
+6340         array$(f-1,record_counter%)=v$
+6350       END FOR f
+6360     END IF
+6370   record_counter%=record_counter%+1
+6380   END FOR r
+6390   END IF
+6400   :
+6410   REMark work around ugly bug in Easyptr
+6420 :
+6430   REMark PVAL#6, result%
+6440   REMark wheight%=result%(9)
+6450   REMark whighchar%=wheight%/12+1
+6460   REMark PRINT #0,wheight%,whighchar%
+6470   REMark IF COUNT (#4)-y%<whighchar% THEN y%=COUNT(#4)-whighchar%
+6480   REMark MWLINK#6,1!#7: CLS#7
+6490   MAWDRAW#6,1,array$,x%,0
+6500 END DEFine UPDATE_TABLE
+6510 :
+6520 DEFine FuNction NUMBER(a$)
+6530 REMark returns 0 if not numeric, 1 if numeric
+6540   LOCal i
+6550   IF a$="" THEN
+6560     RETurn 0
+6570   END IF
+6580   nums$="-0123456789."
+6590   FOR i=1 TO LEN(a$)
+6600      IF NOT (a$(i) INSTR nums$)
+6610              RETurn 0
+6620      END IF
+6630 END FOR i
+6640 RETurn 1
+6650 END DEFine num
+6660 :
+6670 DEFine FuNction BOUNDS(a$)
+6680  LOCal a
+6690  IF NOT NUMBER(a$) THEN RETurn -1
+6700  IF a$="" THEN RETurn -1
+6710  a=a$
+6720  IF a<=32767 AND a > -32768 THEN RETurn 1: ELSE RETurn 0
+6730 END DEFine BOUNDS
+6740 :
+6750 DEFine PROCedure GET_APPW_SIZE(channel,appw_no,xsize%,ysize%)
+6760 LOCal working_def,ww_nappl,ww_pappl,apw
+6770 working_def=MWDEF(#channel)
+6780 ww_nappl=PEEK_W(working_def+110)
+6790 IF appw_no<1 OR appw_no>ww_nappl THEN
+6800 xsize%=-1 : ysize%=-1
+6810 ELSE
+6820 ww_pappl=PEEK_L(working_def+112)
+6830 apw=PEEK_L(ww_pappl+((appw_no-1)*4))
+6840 xsize%=PEEK_W(apw)
+6850 ysize%=PEEK_W(apw+2)
+6860 END IF
+6870 END DEFine GET_APPW_SIZE
+6880 :
+6890 DEFine PROCedure RESIZE_WINDOW(channo, screen_channel, xsize%, ysize%)
+6900    DIM pr%(16)
+6910    PVAL#channo; pr%
+6920 REMark   PRINT#0, "pr%(8) = ", pr%(8),"pr%(9) = ", pr%(9)
+6930    WSIZE #channo, x%, y%
+6940 REMark   PRINT#0, "x% = ", x%,"y% = ",y%
+6950    xs% = pr%(8) - x%
+6960    ys% = pr%(9) - y%
+6970    MCLEAR#channo
+6980    MDRAW#channo; "qbase8", -1, -1, xs%, ys%
+6990    GET_APPW_SIZE channo,1,xsize%,ysize%
+7000    MWLINK#channo,1,#screen_channel
+7010 REMark   PRINT#screen_channel, xsize% & "x" & ysize%
+7020 END DEFine RESIZE_WINDOW
