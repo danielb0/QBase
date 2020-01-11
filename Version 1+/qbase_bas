@@ -1,6 +1,7 @@
+99 REMark QBAS 1.02 19/8/2019
 100 REMark QL dbas front end package program
 110 REMark $$asmb=win1_qbsrc_QBase_cnf_cde,0,12
-120 REMark $$asmb=win1_qbsrc_qbase_new_cde,4,82
+120 REMark $$asmb=win1_qbsrc_qbase102_cde,4,82
 130 REMark $$stak=16384
 140 REMark WHEN ERRor
 150 REMark ERROR_HANDLING
@@ -225,7 +226,7 @@
 2340   :
 2350   REMark make sure screen title is always centered
 2360   :
-2370   tit$=" Q-Base v1.01 : "&dbname$&status$
+2370   tit$=" Q-Base v1.02 : "&dbname$&status$
 2380   MWLINK#6,1!#7
 2390   INK#7,0:PAPER#7,221
 2400   PRINT #7,tit$
@@ -524,7 +525,7 @@
 5100 DEFine PROCedure INCLUDE_FIELDS
 5110   LOCal criterion$
 5120   REMark set defaults
-5130   criterion$="":exclud=1:operator$="=":field_choice=1
+5130   criterion$="":includ=1:operator$="=":field_choice=1
 5140   MDRAW#8,'select'
 5150   MAWDRAW#8,1,f_name$,0,0,,105
 5160   REPeat action_loop
@@ -539,8 +540,8 @@
 5250     END IF
 5260     SELect ON action
 5270       =0: MCLEAR#8: RETurn
-5280       =-9:a=MSTAT%(#8,-8,0):exclud=1
-5290       =-8:a=MSTAT%(#8,-9,0):exclud=0
+5280       =-9:a=MSTAT%(#8,-8,0):includ=0
+5290       =-8:a=MSTAT%(#8,-9,0):includ=1
 5300       =-1:a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-3,0):a=MSTAT%(#8,-4,0):operator$="="
 5310       =-2:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-3,0):a=MSTAT%(#8,-4,0):operator$="<>"
 5320       =-3:a=MSTAT%(#8,-1,0):a=MSTAT%(#8,-2,0):a=MSTAT%(#8,-4,0):operator$="<"
