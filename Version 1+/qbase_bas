@@ -225,7 +225,7 @@
 2340   :
 2350   REMark make sure screen title is always centered
 2360   :
-2370   tit$=" Q-Base v1.00 : "&dbname$&status$
+2370   tit$=" Q-Base v1.01 : "&dbname$&status$
 2380   MWLINK#6,1!#7
 2390   INK#7,0:PAPER#7,221
 2400   PRINT #7,tit$
