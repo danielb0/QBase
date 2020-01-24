@@ -1,10 +1,10 @@
-100 REMark QBAS 1.02 19/8/2019
+100 REMark QBase 1.02 19/8/2019
 105 REMark Last edited 24/1/2020
 110 REMark QL dbas front end package program
-120 device$=WIN2_
+120 device$="WIN1_"
 130 version$="Qbase v1.02"
-140 REMark $$asmb=device$&"qbsrc_QBase_cnf_cde",0,12
-150 REMark $$asmb=device$&"qbsrc_qbase102_cde",4,82
+140 REMark $$asmb=win1_qbsrc_QBase_cnf_cde,0,12
+150 REMark $$asmb=win1_qbsrc_qbase102_cde,4,82
 160 REMark $$stak=16384
 210 IF VER$="HBA" THEN
 220 JOB_NAME "Database Editor"
@@ -83,7 +83,7 @@
 1010     =-9: NEW_FIELD:UPDATE_STATUS:RECALCULATE_POSITIONS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-9,0):     REMark add field
 1020     =-10: DELETE_FIELD:UPDATE_STATUS:RECALCULATE_POSITIONS:MAKE_SCREEN:PRINT_ALL_FIELDS:a=MSTAT%(#6,-10,0):REMark delete field
 1030     =-11: RENAME_FIELD:UPDATE_STATUS:RECALCULATE_POSITIONS:MAKE_SCREEN:PRINT_ALL_FIELDS: a=MSTAT%(#6,-11,0):REMark rename field
-1040     =-19: RESIZE_WINDOW 6, 3, xsize%, ysize%: scr_x = xsize%: scy=ysize%: IF dbname$<>"" THEN :UPDATE_STATUS: MAKE_SCREEN: PRINT_ALL_FIELDS: END IF : a=MSTAT%(#6,-19,0)
+1040     =-19: RESIZE_WINDOW 6, 3, xsize%, ysize%: scr_x = xsize%: scr_y=ysize%: IF dbname$<>"" THEN :UPDATE_STATUS: MAKE_SCREEN: PRINT_ALL_FIELDS: END IF : a=MSTAT%(#6,-19,0)
 1070     =REMAINDER :
 1080   END SELect
 1090 END REPeat main_loop
