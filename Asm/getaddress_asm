@@ -54,7 +54,7 @@ OK2     lea     input_str,a3    destination address
 * the input string parameter is now copied into the string buffer.
 * d6 contains total number of name table entries
 * d7 contains offset in name table and name list
-                                   d
+
         clr.l   d7                      main loop counter
         move.l  BV_NTBAS(a6),a4
         move.l  BV_NTP(a6),a5
