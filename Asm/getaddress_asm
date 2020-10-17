@@ -8,6 +8,9 @@ error_bp        equ     -15
 start   lea     define,a1
         move.w  BP_INIT,a2
         jmp     (a2)
+
+*function definition table
+
 define  dc.w    0               No of procedures
         dc.w    0               end of procedures
         dc.w    1               no of functions
@@ -15,6 +18,7 @@ define  dc.w    0               No of procedures
         dc.b    8,'GetAddr$'    name of function
         dc.w    0               end of functions
 
+*start of main function
 
 GetAddr move.l  a5,d7           top of parameters
         sub.l   a3,d7
@@ -33,7 +37,7 @@ OK1     cmp.w   #1,d3           check that we have 1 parameter
         moveq   #error_bp,d0    return with error
         rts
 
-*at this point we have our one paramter on the maths stack
+*at this point we have our one parameter on the maths stack
 *copy the string to input_str:
 
 OK2     lea     input_str,a3    destination address
@@ -48,42 +52,54 @@ OK2     lea     input_str,a3    destination address
         adda.w  d0,a1
 
 * the input string parameter is now copied into the string buffer.
-
+* d6 contains total number of name table entries
+* d7 contains offset in name table and name list
+                                   d
+        clr.l   d7                      main loop counter
         move.l  BV_NTBAS(a6),a4
         move.l  BV_NTP(a6),a5
         suba.l  a4,a5
-        move.l  a5,d1
-        divu    #8,d1                   number of items in name list
+        move.l  a5,d6                   number of items in name list*8
 
-
+main_l  move.l  BV_NTBAS(a6),a4
+        adda.l  d7,a4                   increase pointer in loop
         move.w  0(a6,a4.l),d2           type
         move.l  BV_NTBAS(a6),a4
+        adda.l  d7,a4
         move.w  2(a6,a4.l),d3           name_pointer
         move.l  BV_NTBAS(a6),a4
+        adda.l  d7,a4
         move.l  4(a6,a4.l),d4           value
         movea.l BV_NLBAS(a6),a4         get name list pointer
+        adda.l  d3,a4                   update pointer
 
 *get name from name list into curr_name
-        lea     curr_name_len,a3
+        lea     curr_name,a3
         lea     0(a6,a4.l),a5
-        adda.l  #1,a3
-        clr.l   d5
-        move.b  (a5),d5                 get string length
-        move.b  d5,(a3)+
-        adda.l  #1,a5
-m_loop  move.b  (a5)+,(a3)+
-        subq.l  #1,d5
-        tst.l   d5
-        bne.s   m_loop
+        bsr     copy_name
 
 *The name is now in the name buffer
 
+*compare the parameter string with the name string
 
-        lea     num,a1
+        move.b  #1,d0
+        lea     curr_name,a0
+        lea     input_str,a1
+        bsr     comp_str
+        tst.b   d0                      are the strings equal (d0=0)?
+        beq.s   ret_val                 if so then return the value
+        addq.l  #8,d7
+        cmp.l   d6,d7                   have we reached the end of the name list?
+        bgt     not_found
+        bra     main_l                  else go back and try again
+
+not_found       move.l  #-1,d4          return -1 if not found
+
+ret_val lea     num,a1
         move.l  d4,(a1)                 get address and move it to num buffer
         lea     conv_str,a0             get address of string buffer
         bsr     conv_long
-ret_val move.l  #20,d1                  Allocate space on maths stack
+        move.l  #20,d1                  Allocate space on maths stack
         move.l  BV_RIP(a6),a1           Norm says do this before calling for allocation
         move.w  BV_CHRIX,a2             Reserve space on Maths stack
         jsr     (a2)
@@ -96,6 +112,13 @@ ret_val move.l  #20,d1                  Allocate space on maths stack
         rts
 
 *Subroutines*
+
+*compare two strings
+comp_str        suba.l  a6,a0
+                suba.l  a6,a1
+                move.w  UT_CSTR,a2
+                jsr     (a2)
+                rts
 
 *Convert long to hex
 conv_long       movem.l a0/a1,-(a7)
@@ -120,12 +143,27 @@ cloop           move.b  (a2),(a3)+      copy byte
                 bne.s   cloop
                 rts
 
+*copy a name from the name list to a buffer
+*destination buffer on a3
+*source name list entry on a5
+
+copy_name       adda.l  #1,a3
+                clr.l   d5
+                move.b  (a5),d5                 get string length
+                move.b  d5,(a3)+
+                adda.l  #1,a5
+m_loop          move.b  (a5)+,(a3)+
+                subq.l  #1,d5
+                tst.l   d5
+                bne.s   m_loop
+                rts
+
 *data*
 
 num             ds.l    1
                 ds.b    30
 strlen          ds.w    1
 conv_str        ds.l    4
-curr_name_len   ds.w    1
-curr_name       ds.l    4
+curr_name       ds.w    1
+name_chr        ds.l    4
 input_str       ds.l    4
