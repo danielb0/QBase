@@ -1,0 +1,7 @@
+         movea.l  #$20000,a0        Put an address in a0
+         move.l   data,d1           Put the contents of data in d1
+         lea      data,a1           Get th address of data
+         move.l   d1,(a0)           Put the contents of data in d1
+         clr.l    d0                quit
+         rts
+data     dc.l     8

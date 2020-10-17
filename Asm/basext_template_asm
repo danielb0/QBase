@@ -1,0 +1,11 @@
+start   lea     define,a1
+        move.w  BP_INIT,a2
+        jmp     (a2)
+define  dc.w    1               No of procedures
+        dc.w    proc_label-*
+        dc.b    4,'NAME'        length of name and name
+        dc.w    0               end of procedures
+        dc.w    1               no of functions
+        dc.w    fun_label-*
+        dc.w    8,'FUNCNAME'
+        dc.w    0               end of functions

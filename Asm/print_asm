@@ -1,0 +1,82 @@
+        lea     num,a1                  get addresses of num value and buffer
+        lea     buf,a0
+        bsr     conv_long               convert the num to hex string
+        lea     strlen,a1
+        bsr     pr_str                  print string value
+        lea     value,a0                Load address of string into a0
+        move.b  (a0),d1                 load character into d1
+loop    bsr     print                   print it
+        addq.l  #1,a0                   add 1 to address
+        move.b  (a0),d1
+        cmp.b   #255,d1                 compare contents to 255
+        bne.s   loop                    branch if not equal
+        move.b  linefeed,d1
+        bsr     print                   print a linefeed
+        move.w  #0,d1
+pr_loop bsr     pr_int                  print an integer
+        move.w  d1,d2                   save d1
+        move.b  linefeed,d1
+        bsr     print                   and a linefeed
+        move.w  d2,d1                   restore d1
+        addq.w  #1,d1
+        cmp.w   #10,d1
+        bne.s   pr_loop                 loop if less than 10
+        lea     strstrt,a1
+        bsr     pr_str                  print string message
+rjob    moveq   #mt_frjob,d0
+        moveq   #-1,d1                  current job
+        trap    #1                      kill job
+        clr.l   d0                      never reach here!
+        rts
+*data for hex conversion
+num     dc.l    $10101234
+        ds.b    30
+strlen  dc.w    8
+buf     ds.b    32
+
+*Print a single character
+*Character code in d1
+print   movem.l d0-1/d3/a0-1,-(a7)      save registers to stack
+        move.l  chan1,a0                set channel ID
+        moveq   #-1,d3                  set timeout
+        moveq   #5,d0                   signal output
+        trap    #3                      do the printing
+        movem.l (a7)+,d0-1/d3/a0-1
+        rts
+
+*print an integer
+*integer value in d1
+pr_int  movem.l d1-3/a1-3,-(a7)         save registers
+        move.l  chan1,a0
+        move.w  ut_mint,a2              set vector
+        jsr     (a2)
+        movem.l (a7)+,d1-3/a1-3         restore save registers
+        rts
+
+*Print a string
+*Address of start of string in a1
+*string format = size(16 bits) + ascii values
+pr_str  movem.l d1-3/a1,-(a7)           save registers
+        move.l  chan1,a0
+        move.w  ut_mtext,a2
+        jsr     (a2)
+        movem.l (a7)+,d1-3/a1
+        rts
+
+value   dc.b    10,'Hello World!',255
+linefeed dc.b   10
+chan1   dc.l    $00010001
+strstrt dc.w    17
+str     dc.b    'This is a message'
+
+
+*Convert long to hex
+*pointer to number on a1
+*pointer to buffer on a0
+conv_long       movem.l a0/a1,-(a7)
+                suba.l  a6,a0
+                suba.l  a6,a1
+                move.w  CN_ITOHL,a2
+                jsr     (a2)
+                movem.l (a7)+,a0/a1
+                rts

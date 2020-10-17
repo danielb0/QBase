@@ -1,0 +1,67 @@
+BV_NTBAS        equ     $18
+BV_NTP          equ     $1C
+BV_NLBAS        equ     $20
+BV_NLP          equ     $24
+BV_RIP          equ     $58
+
+start   lea     define,a1
+        move.w  BP_INIT,a2
+        jmp     (a2)
+define  dc.w    0               No of procedures
+        dc.w    0               end of procedures
+        dc.w    1               no of functions
+        dc.w    GetAddr-*
+        dc.b    8,'GetAddr$'    name of function
+        dc.w    0               end of functions
+
+
+GetAddr move.l  BV_NTBAS(a6),a4
+        move.l  BV_NTP(a6),a5
+        suba.l  a4,a5
+        move.l  a5,d1           number of items in nme list
+
+
+        move.w  0(a6,a4.l),d2           type
+        move.l  BV_NTBAS(a6),a4
+        move.w  2(a6,a4.l),d3           name_pointer
+        move.l  BV_NTBAS(a6),a4
+        move.l  4(a6,a4.l),d4           value
+        movea.l BV_NLBAS(a6),a4         get name list pointer
+
+        lea     num,a1
+        move.l  d4,(a1)                get address and move it to num buffer
+        lea     conv_str,a0            get address of string buffer
+        bsr     conv_long
+        move.l  #8,d5                   put length of string on d5. Always 8.
+ret_val lea     strlen,a3
+        move.l  #20,d1                  Allocate space on maths stack
+        move.l  BV_RIP(a6),a1           Norm says do this before calling for allocation
+        move.w  BV_CHRIX,a2             Reserve space on Maths stack
+        jsr     (a2)
+        clr.l   d6
+        move.w  d5,(a3)                 copy string length to Maths Stack
+        addq.l  #2,d5                   add 2 to length to make loop counter
+loop2   move.b  (a3)+,0(a6,a1.l)        copy output string to maths stack
+        addq.l  #1,a1
+        addq.l  #1,d6
+        cmp.b   d5,d6
+        bne.s   loop2
+
+        moveq   #1,d4
+        moveq   #0,d0
+        rts
+
+*Convert long to hex
+conv_long       movem.l a0/a1,-(a7)
+                suba.l  a6,a0
+                suba.l  a6,a1
+                move.w  CN_ITOHL,a2
+                jsr     (a2)
+                movem.l (a7)+,a0/a1
+                rts
+num             ds.l    1
+                ds.b    30
+strlen          ds.w    1
+conv_str        ds.l    4
+ret_str         ds.l    4
+input_str       ds.l    4

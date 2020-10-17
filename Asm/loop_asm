@@ -1,0 +1,6 @@
+Start    move.w #1000,D0
+Loop     subq.w #1,D0
+         bne.s Loop(PC)
+End      clr.w D0
+         rts
+
