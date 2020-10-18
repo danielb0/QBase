@@ -163,7 +163,7 @@ m_loop          move.b  (a5)+,(a3)+
 num             ds.l    1
                 ds.b    30
 strlen          ds.w    1
-conv_str        ds.l    4
+conv_str        ds.b    30
 curr_name       ds.w    1
-name_chr        ds.l    4
-input_str       ds.l    4
+name_chr        ds.b    30
+input_str       ds.b    30
