@@ -4,6 +4,7 @@ BV_NLBAS        equ     $20
 BV_NLP          equ     $24
 BV_RIP          equ     $58
 error_bp        equ     -15
+error_nf        equ     -1
 
 start   lea     define,a1
         move.w  BP_INIT,a2
@@ -55,11 +56,13 @@ OK2     lea     input_str,a3    destination address
 * d7 contains offset in name table and name list
 
         clr.l   d7                      main loop counter
+        clr.l   d2                      debugging
 main_l  move.l  BV_NTBAS(a6),a4
         adda.l  d7,a4                   increase pointer in loop
-        cmpa.l  BV_NTP(a6),a4           Have we reached the end of the name list?
-        bge.s   not_found
-        move.w  0(a6,a4.l),d2           type
+        move.l  BV_NTP(a6),d6
+        cmpa.l  d6,a4                   Have we reached the end of the name list?
+        bcc.s   not_found
+*       move.w  0(a6,a4.l),d2           type
         move.w  2(a6,a4.l),d3           name_pointer
         move.l  4(a6,a4.l),d4           value
         movea.l BV_NLBAS(a6),a4         get name list pointer
@@ -74,16 +77,17 @@ main_l  move.l  BV_NTBAS(a6),a4
 
 *compare the parameter string with the name string
 
-        move.b  #1,d0
+        move.b  #error_nf,d0
         lea     curr_name,a0
         lea     input_str,a1
         bsr     comp_str
         tst.b   d0                      are the strings equal (d0=0)?
         beq.s   ret_val                 if so then return the value
         addq.l  #8,d7
+        addq.l  #1,d2
         bra     main_l                  else go back and try again
 
-not_found       move.l  #-1,d4          return -1 if not found
+not_found       move.l  d2,d4           return no of iterations if not found
 
 ret_val lea     num,a1
         move.l  d4,(a1)                 get address and move it to num buffer
@@ -97,8 +101,8 @@ ret_val lea     num,a1
         lea     0(a6,a1.l),a3           source string address on a3
         move.w  #8,(a2)                 move length word to beginning of source string
         bsr     copy_str
-        moveq   #1,d4
-        moveq   #0,d0
+        moveq   #1,d4                   return type = string
+        moveq   #0,d0                   and return
         rts
 
 *Subroutines*
@@ -136,13 +140,10 @@ cloop           move.b  (a2),(a3)+      copy byte
 * copy a name from the name list to a buffer
 * destination buffer on a3
 * source name list entry on a5
-* d5 is loops counter
-copy_name       move.b  #0,(a3)
-                adda.l  #1,a3
-                clr.l   d5
-                move.b  (a5),d5                 get string length
-                move.b  d5,(a3)+
-                adda.l  #1,a5
+* d5 is loop counter
+copy_name       move.b  (a5)+,d5                 get string length
+                ext.w   d5
+                move.w  d5,(a3)+
 m_loop          move.b  (a5)+,(a3)+
                 subq.l  #1,d5
                 tst.l   d5
@@ -151,10 +152,11 @@ m_loop          move.b  (a5)+,(a3)+
 
 *data*
 
-num             ds.l    1
-                ds.b    30
-strlen          ds.w    1
-conv_str        ds.b    30
-curr_name       ds.w    1
-name_chr        ds.b    30
-input_str       ds.b    30
+num             dc.l    0
+                dc.l    0,0,0,0,0,0,0,0
+strlen          dc.w    0
+conv_str        dc.l    0,0,0,0,0,0,0,0
+curr_name       dc.w    0
+name_chr        dc.l    0,0,0,0,0,0,0,0
+input_str       dc.l    0,0,0,0,0,0,0,0
+end
