@@ -61,9 +61,11 @@ main_l  move.l  BV_NTBAS(a6),a4
         adda.l  d7,a4                   increase pointer in loop
         move.l  BV_NTP(a6),d6
         cmpa.l  d6,a4                   Have we reached the end of the name list?
-        bcc.s   not_found
+        bge.s   not_found
 *       move.w  0(a6,a4.l),d2           type
         move.w  2(a6,a4.l),d3           name_pointer
+        cmpi.w  #$FFFF,d3               identify weird entries
+        beq     weird                   and ignore them
         move.l  4(a6,a4.l),d4           value
         movea.l BV_NLBAS(a6),a4         get name list pointer
         adda.l  d3,a4                   add accumulated offset to pointer
@@ -74,16 +76,16 @@ main_l  move.l  BV_NTBAS(a6),a4
         bsr     copy_name
 
 *The name is now in the name buffer
+*debug print the name
+        bsr     pr_str
+        bsr     pr_lf
+
 
 *compare the parameter string with the name string
-
-        move.b  #error_nf,d0
-        lea     curr_name,a0
-        lea     input_str,a1
         bsr     comp_str
         tst.b   d0                      are the strings equal (d0=0)?
         beq.s   ret_val                 if so then return the value
-        addq.l  #8,d7
+weird   addq.l  #8,d7
         addq.l  #1,d2
         bra     main_l                  else go back and try again
 
@@ -108,10 +110,15 @@ ret_val lea     num,a1
 *Subroutines*
 
 *compare two strings
-comp_str        suba.l  a6,a0
+comp_str        movem.l a0/a1,-(a7)
+                move.b  #1,d0           comparison type case insensitive
+                lea     curr_name,a0
+                lea     input_str,a1
+                suba.l  a6,a0
                 suba.l  a6,a1
                 move.w  UT_CSTR,a2
                 jsr     (a2)
+                movem.l (a7)+,a0/a1
                 rts
 
 *Convert long to hex
@@ -150,8 +157,32 @@ m_loop          move.b  (a5)+,(a3)+
                 bne.s   m_loop
                 rts
 
-*data*
+*Print a string
+*Address of start of string in a1
+*string format = size(16 bits) + ascii values
+pr_str  movem.l d1-3/a1,-(a7)           save registers
+        lea     curr_name,a1
+        move.l  chan1,a0
+        move.w  ut_mtext,a2
+        jsr     (a2)
+        movem.l (a7)+,d1-3/a1
+        rts
 
+*Print a single character
+*Character code in d1
+pr_lf   movem.l d0-1/d3/a0-1,-(a7)      save registers to stack
+        move.b  #10,d1
+        move.l  chan1,a0                set channel ID
+        moveq   #-1,d3                  set timeout
+        moveq   #5,d0                   signal output
+        trap    #3                      do the printing
+        movem.l (a7)+,d0-1/d3/a0-1
+        rts
+
+
+
+*data*
+chan1           dc.l    $00010001
 num             dc.l    0
                 dc.l    0,0,0,0,0,0,0,0
 strlen          dc.w    0
